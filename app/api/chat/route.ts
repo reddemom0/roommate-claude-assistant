@@ -34,8 +34,11 @@ export async function POST(req: NextRequest) {
       messages: messages,
     });
 
+    const content = response.content[0];
+    const text = content.type === 'text' ? content.text : 'Sorry, I cannot process that request.';
+    
     return NextResponse.json({ 
-      content: response.content[0].text 
+      content: text 
     });
   } catch (error) {
     console.error('Error:', error);
