@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useRef, useEffect } from 'react';
-import { Send, Users, Home, MessageSquare, Trash2, User, Menu, X, RotateCcw } from 'lucide-react';
+import { Send, MessageCircle, MoreHorizontal, RefreshCw } from 'lucide-react';
 
 interface Message {
   id: number;
@@ -16,7 +16,7 @@ export default function RoommateClaudeAssistant() {
     {
       id: 1,
       role: 'assistant',
-      content: "Alright Vancouver crew, your Barcelona household assistant is online. Got drama? Need decisions made? Want me to settle who's washing dishes this week? Let's go.",
+      content: "Barcelona household assistant ready. How can I help?",
       timestamp: new Date(),
       user: 'Claude'
     }
@@ -28,9 +28,6 @@ export default function RoommateClaudeAssistant() {
   const [showMenu, setShowMenu] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [pullDistance, setPullDistance] = useState(0);
-  const [touchStartTime, setTouchStartTime] = useState<number>(0);
-  const [isScrolling, setIsScrolling] = useState(false);
-  const [lastTouchY, setLastTouchY] = useState<number>(0);
   
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
@@ -45,7 +42,7 @@ export default function RoommateClaudeAssistant() {
     scrollToBottom();
   }, [messages]);
 
-  // iOS Safe Area Support
+  // iOS viewport height fix
   useEffect(() => {
     const setVH = () => {
       const vh = window.innerHeight * 0.01;
@@ -60,75 +57,46 @@ export default function RoommateClaudeAssistant() {
     };
   }, []);
 
-  // Enhanced iOS gesture handling
+  // Pull to refresh
   const handleTouchStart = (e: React.TouchEvent) => {
-    const touch = e.touches[0];
-    const container = messagesContainerRef.current;
-    
-    if (container && container.scrollTop === 0) {
-      touchStartY.current = touch.clientY;
-      setTouchStartTime(Date.now());
-      setIsScrolling(false);
+    if (messagesContainerRef.current?.scrollTop === 0) {
+      touchStartY.current = e.touches[0].clientY;
     }
-    setLastTouchY(touch.clientY);
   };
 
   const handleTouchMove = (e: React.TouchEvent) => {
-    const touch = e.touches[0];
-    const container = messagesContainerRef.current;
-    const deltaY = Math.abs(touch.clientY - lastTouchY);
-    
-    if (deltaY > 5) {
-      setIsScrolling(true);
-    }
-    
-    if (container && container.scrollTop === 0 && !isRefreshing && !isScrolling) {
-      const currentY = touch.clientY;
-      const distance = Math.max(0, Math.min(120, currentY - touchStartY.current));
-      
-      // Add resistance curve like iOS
-      const resistance = distance > 60 ? 60 + (distance - 60) * 0.3 : distance;
-      setPullDistance(resistance);
+    if (messagesContainerRef.current?.scrollTop === 0 && !isRefreshing) {
+      const currentY = e.touches[0].clientY;
+      const distance = Math.max(0, Math.min(80, currentY - touchStartY.current));
+      setPullDistance(distance);
       
       if (distance > 0) {
         e.preventDefault();
-        // Add haptic feedback at threshold
-        if (distance > 60 && pullDistance <= 60 && 'vibrate' in navigator) {
-          navigator.vibrate(10);
+        if (distance > 50 && 'vibrate' in navigator) {
+          navigator.vibrate(5);
         }
       }
     }
-    setLastTouchY(touch.clientY);
   };
 
   const handleTouchEnd = () => {
-    const touchDuration = Date.now() - touchStartTime;
-    
-    if (pullDistance > 60 && !isRefreshing && touchDuration > 100) {
+    if (pullDistance > 50 && !isRefreshing) {
       handleRefresh();
-      // Stronger haptic for action
-      if ('vibrate' in navigator) {
-        navigator.vibrate([10, 50, 10]);
-      }
     }
-    
     setPullDistance(0);
-    setIsScrolling(false);
   };
 
   const handleRefresh = async () => {
     setIsRefreshing(true);
-    // Simulate refresh with actual functionality
-    await new Promise(resolve => setTimeout(resolve, 1200));
+    await new Promise(resolve => setTimeout(resolve, 800));
     setIsRefreshing(false);
   };
 
   const handleSetName = () => {
     if (userName.trim()) {
       setShowNameInput(false);
-      // Welcome haptic
       if ('vibrate' in navigator) {
-        navigator.vibrate([20, 100, 20]);
+        navigator.vibrate(10);
       }
     }
   };
@@ -153,7 +121,7 @@ export default function RoommateClaudeAssistant() {
       return data.content;
     } catch (error) {
       console.error('Error calling Claude API:', error);
-      return "Connection issues. Try again.";
+      return "Connection error. Try again.";
     }
   };
 
@@ -173,14 +141,12 @@ export default function RoommateClaudeAssistant() {
     setInputMessage('');
     setIsLoading(true);
 
-    // Enhanced haptic feedback for iOS
     if ('vibrate' in navigator) {
-      navigator.vibrate(15);
+      navigator.vibrate(8);
     }
 
-    // Reset input height
     if (inputRef.current) {
-      inputRef.current.style.height = '48px';
+      inputRef.current.style.height = '44px';
     }
 
     const conversationHistory = updatedMessages.map(msg => ({
@@ -200,11 +166,6 @@ export default function RoommateClaudeAssistant() {
       };
 
       setMessages(prev => [...prev, assistantMessage]);
-      
-      // Subtle haptic for received message
-      if ('vibrate' in navigator) {
-        navigator.vibrate(8);
-      }
     } catch (error) {
       const errorMessage: Message = {
         id: Date.now() + 1,
@@ -214,11 +175,6 @@ export default function RoommateClaudeAssistant() {
         user: 'Claude'
       };
       setMessages(prev => [...prev, errorMessage]);
-      
-      // Error haptic pattern
-      if ('vibrate' in navigator) {
-        navigator.vibrate([50, 100, 50]);
-      }
     } finally {
       setIsLoading(false);
       setTimeout(() => inputRef.current?.focus(), 100);
@@ -241,16 +197,12 @@ export default function RoommateClaudeAssistant() {
       {
         id: 1,
         role: 'assistant',
-        content: "Alright Vancouver crew, your Barcelona household assistant is online. Got drama? Need decisions made? Want me to settle who's washing dishes this week? Let's go.",
+        content: "Barcelona household assistant ready. How can I help?",
         timestamp: new Date(),
         user: 'Claude'
       }
     ]);
     setShowMenu(false);
-    // Clear haptic
-    if ('vibrate' in navigator) {
-      navigator.vibrate(25);
-    }
   };
 
   const formatTime = (timestamp: Date) => {
@@ -258,34 +210,30 @@ export default function RoommateClaudeAssistant() {
   };
 
   const quickPrompts = [
-    "Who's turn for groceries?",
-    "Split this bill 3 ways",
-    "Settle this debate",
-    "Find Barcelona info",
-    "Plan weekend activity",
-    "Assign this task"
+    "Groceries?",
+    "Split bill",
+    "Settle debate",
+    "Barcelona info",
+    "Weekend plans",
+    "Assign task"
   ];
 
   const handleQuickPrompt = (prompt: string) => {
     setInputMessage(prompt);
     inputRef.current?.focus();
-    // Quick prompt haptic
-    if ('vibrate' in navigator) {
-      navigator.vibrate(12);
-    }
   };
 
   if (showNameInput) {
     return (
-      <div className="fixed inset-0 bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4" 
+      <div className="min-h-screen bg-black flex items-center justify-center p-6" 
            style={{ height: 'calc(var(--vh, 1vh) * 100)' }}>
-        <div className="bg-white/95 backdrop-blur-xl rounded-3xl shadow-2xl p-6 w-full max-w-sm mx-4 border border-white/20">
-          <div className="text-center mb-6">
-            <div className="w-20 h-20 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg transform hover:scale-105 transition-transform duration-200">
-              <Users className="w-10 h-10 text-white" />
+        <div className="bg-gray-900/90 backdrop-blur-2xl rounded-3xl p-8 w-full max-w-sm border border-gray-800">
+          <div className="text-center mb-8">
+            <div className="w-16 h-16 bg-blue-500 rounded-2xl flex items-center justify-center mx-auto mb-6">
+              <MessageCircle className="w-8 h-8 text-white" />
             </div>
-            <h1 className="text-2xl font-bold text-gray-800 mb-2">Barcelona Assistant</h1>
-            <p className="text-gray-600 text-sm">Who's asking?</p>
+            <h1 className="text-2xl font-medium text-white mb-2">Assistant</h1>
+            <p className="text-gray-400 text-sm">Who's this?</p>
           </div>
           
           <div className="space-y-4">
@@ -295,15 +243,15 @@ export default function RoommateClaudeAssistant() {
               onChange={(e) => setUserName(e.target.value)}
               onKeyPress={handleKeyPress}
               placeholder="Chris, Emily, or Levi"
-              className="w-full px-5 py-4 border-0 bg-gray-50 rounded-2xl focus:ring-2 focus:ring-indigo-500 focus:bg-white outline-none text-lg transition-all duration-200 transform focus:scale-105"
+              className="w-full px-4 py-4 bg-gray-800 border border-gray-700 rounded-2xl focus:ring-1 focus:ring-blue-500 focus:border-blue-500 outline-none text-white placeholder-gray-500 text-base"
               autoFocus
             />
             <button
               onClick={handleSetName}
               disabled={!userName.trim()}
-              className="w-full bg-gradient-to-r from-indigo-600 to-purple-600 text-white py-4 rounded-2xl hover:from-indigo-700 hover:to-purple-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-all duration-200 font-medium text-lg shadow-lg transform active:scale-95 hover:scale-105"
+              className="w-full bg-blue-500 text-white py-4 rounded-2xl hover:bg-blue-600 disabled:bg-gray-800 disabled:text-gray-500 transition-colors font-medium text-base"
             >
-              Let's Go
+              Continue
             </button>
           </div>
         </div>
@@ -312,53 +260,48 @@ export default function RoommateClaudeAssistant() {
   }
 
   return (
-    <div className="fixed inset-0 bg-gradient-to-br from-blue-50 to-indigo-100 flex flex-col" 
+    <div className="h-screen bg-black flex flex-col" 
          style={{ height: 'calc(var(--vh, 1vh) * 100)' }}>
-      {/* iOS Status Bar Safe Area */}
-      <div className="h-safe-top bg-white/95 backdrop-blur-xl"></div>
       
       {/* Header */}
-      <div className="bg-white/95 backdrop-blur-xl shadow-sm border-b border-white/20 flex-shrink-0">
-        <div className="px-4 py-3 flex items-center justify-between">
-          <div className="flex items-center space-x-3">
-            <div className="w-8 h-8 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-xl flex items-center justify-center shadow-sm">
-              <Home className="w-4 h-4 text-white" />
-            </div>
-            <div>
-              <h1 className="text-lg font-semibold text-gray-800">Claude</h1>
-              <p className="text-xs text-gray-500">{userName}</p>
-            </div>
+      <div className="bg-gray-900/90 backdrop-blur-xl border-b border-gray-800 px-4 py-3 flex items-center justify-between">
+        <div className="flex items-center space-x-3">
+          <div className="w-8 h-8 bg-blue-500 rounded-xl flex items-center justify-center">
+            <MessageCircle className="w-4 h-4 text-white" />
           </div>
-          <button
-            onClick={() => setShowMenu(!showMenu)}
-            className="p-3 text-gray-500 hover:text-gray-700 transition-colors rounded-xl hover:bg-gray-100 active:scale-95 transform"
-          >
-            {showMenu ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
-          </button>
+          <div>
+            <h1 className="text-white font-medium">Claude</h1>
+            <p className="text-gray-400 text-xs">{userName}</p>
+          </div>
         </div>
-
-        {/* Menu */}
-        {showMenu && (
-          <div className="border-t border-white/20 bg-white/80 backdrop-blur-xl p-4 space-y-3 animate-in fade-in duration-200">
-            <button
-              onClick={clearChat}
-              className="flex items-center space-x-2 text-gray-600 hover:text-gray-800 transition-colors w-full text-left p-3 rounded-xl hover:bg-gray-100 active:scale-95 transform"
-            >
-              <Trash2 className="w-4 h-4" />
-              <span>Clear Chat</span>
-            </button>
-          </div>
-        )}
+        <button
+          onClick={() => setShowMenu(!showMenu)}
+          className="p-2 text-gray-400 hover:text-white transition-colors"
+        >
+          <MoreHorizontal className="w-5 h-5" />
+        </button>
       </div>
 
-      {/* Quick Prompts */}
-      <div className="bg-white/90 backdrop-blur-xl border-b border-white/20 px-4 py-3 flex-shrink-0">
-        <div className="flex space-x-2 overflow-x-auto pb-1 scrollbar-hide">
+      {/* Menu */}
+      {showMenu && (
+        <div className="bg-gray-900/95 backdrop-blur-xl border-b border-gray-800 px-4 py-3">
+          <button
+            onClick={clearChat}
+            className="text-gray-400 hover:text-white transition-colors text-sm"
+          >
+            Clear conversation
+          </button>
+        </div>
+      )}
+
+      {/* Quick Actions */}
+      <div className="bg-gray-900/80 backdrop-blur-xl border-b border-gray-800 px-4 py-3">
+        <div className="flex space-x-2 overflow-x-auto scrollbar-hide">
           {quickPrompts.map((prompt, index) => (
             <button
               key={index}
               onClick={() => handleQuickPrompt(prompt)}
-              className="flex-shrink-0 px-4 py-2 bg-gradient-to-r from-indigo-50 to-purple-50 text-indigo-600 rounded-full text-sm font-medium hover:from-indigo-100 hover:to-purple-100 transition-all duration-200 whitespace-nowrap border border-indigo-100 active:scale-95 transform shadow-sm"
+              className="flex-shrink-0 px-3 py-1.5 bg-gray-800 text-gray-300 rounded-full text-sm hover:bg-gray-700 transition-colors whitespace-nowrap"
             >
               {prompt}
             </button>
@@ -366,16 +309,13 @@ export default function RoommateClaudeAssistant() {
         </div>
       </div>
 
-      {/* Pull to Refresh Indicator */}
+      {/* Pull to refresh indicator */}
       {(pullDistance > 0 || isRefreshing) && (
-        <div className="absolute top-24 left-1/2 transform -translate-x-1/2 z-10">
-          <div className={`w-10 h-10 rounded-full shadow-lg flex items-center justify-center transition-all duration-300 ${
-            pullDistance > 60 || isRefreshing ? 'bg-green-500 scale-110' : 'bg-gray-200'
+        <div className="absolute top-20 left-1/2 transform -translate-x-1/2 z-10">
+          <div className={`w-6 h-6 rounded-full bg-gray-700 flex items-center justify-center ${
+            isRefreshing ? 'animate-spin' : ''
           }`}>
-            <RotateCcw className={`w-5 h-5 transition-all duration-200 ${
-              pullDistance > 60 || isRefreshing ? 'text-white' : 'text-gray-400'
-            } ${isRefreshing ? 'animate-spin' : ''}`} 
-                      style={{ transform: isRefreshing ? 'none' : `rotate(${Math.min(pullDistance * 3, 180)}deg)` }} />
+            <RefreshCw className="w-3 h-3 text-gray-400" />
           </div>
         </div>
       )}
@@ -384,50 +324,43 @@ export default function RoommateClaudeAssistant() {
       <div className="flex-1 overflow-hidden">
         <div 
           ref={messagesContainerRef}
-          className="h-full overflow-y-auto px-4 py-4 space-y-4 scroll-smooth custom-scrollbar"
+          className="h-full overflow-y-auto px-4 py-6 space-y-4"
           onTouchStart={handleTouchStart}
           onTouchMove={handleTouchMove}
           onTouchEnd={handleTouchEnd}
           style={{ 
-            transform: `translateY(${pullDistance * 0.5}px)`,
-            transition: pullDistance === 0 ? 'transform 0.3s cubic-bezier(0.16, 1, 0.3, 1)' : 'none'
+            transform: `translateY(${pullDistance * 0.3}px)`,
+            transition: pullDistance === 0 ? 'transform 0.2s ease-out' : 'none'
           }}
         >
-          {messages.map((message, index) => (
+          {messages.map((message) => (
             <div
               key={message.id}
-              className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'} animate-in slide-in-from-bottom duration-300`}
-              style={{ animationDelay: `${index * 50}ms` }}
+              className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
             >
-              <div className={`max-w-[85%] px-4 py-3 rounded-3xl shadow-sm transform hover:scale-105 transition-all duration-200 ${
+              <div className={`max-w-[80%] px-4 py-3 rounded-3xl ${
                 message.role === 'user'
-                  ? 'bg-gradient-to-br from-indigo-600 to-purple-600 text-white rounded-br-lg'
-                  : 'bg-white/95 backdrop-blur-xl text-gray-800 rounded-bl-lg border border-white/20'
+                  ? 'bg-blue-500 text-white ml-12'
+                  : 'bg-gray-800 text-gray-100 mr-12'
               }`}>
                 <div className="flex items-center space-x-2 mb-1">
-                  {message.role === 'user' ? (
-                    <User className="w-3 h-3" />
-                  ) : (
-                    <MessageSquare className="w-3 h-3" />
-                  )}
-                  <span className="text-xs font-medium">{message.user}</span>
-                  <span className={`text-xs ${
-                    message.role === 'user' ? 'text-indigo-200' : 'text-gray-500'
-                  }`}>
+                  <span className="text-xs font-medium opacity-70">{message.user}</span>
+                  <span className="text-xs opacity-50">
                     {formatTime(message.timestamp)}
                   </span>
                 </div>
-                <p className="text-sm whitespace-pre-wrap leading-relaxed">{message.content}</p>
+                <p className="text-sm leading-relaxed">{message.content}</p>
               </div>
             </div>
           ))}
+          
           {isLoading && (
-            <div className="flex justify-start animate-in slide-in-from-bottom">
-              <div className="bg-white/95 backdrop-blur-xl text-gray-800 max-w-[85%] px-4 py-3 rounded-3xl rounded-bl-lg shadow-sm border border-white/20">
-                <div className="flex items-center space-x-2">
-                  <div className="w-2 h-2 bg-gradient-to-r from-indigo-400 to-purple-400 rounded-full animate-bounce"></div>
-                  <div className="w-2 h-2 bg-gradient-to-r from-indigo-400 to-purple-400 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
-                  <div className="w-2 h-2 bg-gradient-to-r from-indigo-400 to-purple-400 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
+            <div className="flex justify-start">
+              <div className="bg-gray-800 text-gray-100 max-w-[80%] px-4 py-3 rounded-3xl mr-12">
+                <div className="flex items-center space-x-1">
+                  <div className="w-2 h-2 bg-gray-500 rounded-full animate-bounce"></div>
+                  <div className="w-2 h-2 bg-gray-500 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
+                  <div className="w-2 h-2 bg-gray-500 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
                 </div>
               </div>
             </div>
@@ -436,8 +369,8 @@ export default function RoommateClaudeAssistant() {
         </div>
       </div>
 
-      {/* Input Area - Enhanced for iOS */}
-      <div className="bg-white/95 backdrop-blur-xl border-t border-white/20 p-4 flex-shrink-0 pb-safe">
+      {/* Input */}
+      <div className="bg-gray-900/90 backdrop-blur-xl border-t border-gray-800 p-4">
         <div className="flex items-end space-x-3">
           <div className="flex-1">
             <textarea
@@ -445,11 +378,11 @@ export default function RoommateClaudeAssistant() {
               value={inputMessage}
               onChange={(e) => setInputMessage(e.target.value)}
               onKeyPress={handleKeyPress}
-              placeholder="Ask Claude anything..."
-              className="w-full px-4 py-3 border-0 bg-gray-50 rounded-3xl focus:ring-2 focus:ring-indigo-500 focus:bg-white outline-none resize-none text-base transition-all duration-200 focus:scale-105 transform"
+              placeholder="Message"
+              className="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-3xl focus:ring-1 focus:ring-blue-500 focus:border-blue-500 outline-none resize-none text-white placeholder-gray-500 text-base"
               rows={1}
               style={{
-                minHeight: '48px',
+                minHeight: '44px',
                 maxHeight: '120px',
                 height: 'auto'
               }}
@@ -464,15 +397,12 @@ export default function RoommateClaudeAssistant() {
           <button
             onClick={handleSendMessage}
             disabled={!inputMessage.trim() || isLoading}
-            className="w-12 h-12 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-full hover:from-indigo-700 hover:to-purple-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-all duration-200 flex items-center justify-center flex-shrink-0 shadow-lg transform active:scale-95 hover:scale-110"
+            className="w-11 h-11 bg-blue-500 text-white rounded-full hover:bg-blue-600 disabled:bg-gray-700 disabled:text-gray-500 transition-colors flex items-center justify-center flex-shrink-0"
           >
-            <Send className="w-5 h-5" />
+            <Send className="w-4 h-4" />
           </button>
         </div>
       </div>
-
-      {/* iOS Home Indicator Safe Area */}
-      <div className="h-safe-bottom bg-white/95 backdrop-blur-xl"></div>
     </div>
   );
 }
