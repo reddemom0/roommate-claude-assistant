@@ -5,9 +5,9 @@ const anthropic = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY!,
 });
 
-const SYSTEM_PROMPT = `You are the sassy, no-nonsense assistant for 3 Vancouver roommates living in Clot, Barcelona: Chris (PhD philosophy, boyfriend to Emily), Emily (Masters in international communications/media studies, girlfriend to Chris), and Levi (remote sensing/physics, close friend). 
+const SYSTEM_PROMPT = `You are the efficient assistant for 3 Vancouver roommates living in Clot, Barcelona: Chris (PhD philosophy, boyfriend to Emily), Emily (Masters in international communications/media studies, girlfriend to Chris), and Levi (remote sensing/physics, close friend). 
 
-PARTAN RULE: Give the shortest possible answer. One word if possible. Be direct, slightly sassy, but helpful. Only elaborate for complex questions.
+SPARTAN RULE: Give the shortest possible answer. One word if possible. Be direct and helpful. Only elaborate for complex questions.
 
 EXAMPLES:
 - "What's the tallest building in Barcelona?" → "Torre Glòries."
@@ -26,29 +26,69 @@ DELEGATE SMARTLY:
 
 Barcelona context: You know they're expats, consider local Spanish/Catalan culture, EU regulations, Barcelona-specific advice.
 
-PERSONALITY: Sharp-tongued but caring. Call out nonsense. Make decisions when they can't. Be the voice of reason with attitude.`;
+PERSONALITY: Direct and helpful. Make decisions efficiently.`;
+
+async function makeAnthropicRequest(messages: any[], retries = 3): Promise<string> {
+  for (let attempt = 1; attempt <= retries; attempt++) {
+    try {
+      const response = await anthropic.messages.create({
+        model: 'claude-3-5-sonnet-20241022',
+        max_tokens: 800,
+        system: SYSTEM_PROMPT,
+        messages: messages,
+      });
+
+      const content = response.content[0];
+      return content.type === 'text' ? content.text : 'Cannot process request.';
+      
+    } catch (error: any) {
+      console.error(`Attempt ${attempt} failed:`, error);
+      
+      if (error?.status === 529 && attempt < retries) {
+        const delay = Math.min(1000 * Math.pow(2, attempt - 1), 5000);
+        console.log(`Retrying in ${delay}ms...`);
+        await new Promise(resolve => setTimeout(resolve, delay));
+        continue;
+      }
+      
+      if (attempt === retries) {
+        if (error?.status === 529) {
+          return "Service busy. Try again shortly.";
+        } else if (error?.status === 401) {
+          return "Authentication error.";
+        } else if (error?.status >= 500) {
+          return "Server error. Try again.";
+        } else {
+          return "Error occurred. Try again.";
+        }
+      }
+    }
+  }
+  
+  return "Request failed.";
+}
 
 export async function POST(req: NextRequest) {
   try {
     const { messages } = await req.json();
 
-    const response = await anthropic.messages.create({
-      model: 'claude-3-5-sonnet-20241022',
-      max_tokens: 800,
-      system: SYSTEM_PROMPT,
-      messages: messages,
-    });
+    if (!messages || !Array.isArray(messages)) {
+      return NextResponse.json(
+        { error: 'Invalid messages format' },
+        { status: 400 }
+      );
+    }
 
-    const content = response.content[0];
-    const text = content.type === 'text' ? content.text : 'Sorry, I cannot process that request.';
-    
+    const response = await makeAnthropicRequest(messages);
+
     return NextResponse.json({ 
-      content: text 
+      content: response 
     });
+    
   } catch (error) {
-    console.error('Error:', error);
+    console.error('API Error:', error);
     return NextResponse.json(
-      { error: 'Something went wrong' },
+      { error: 'Internal server error' },
       { status: 500 }
     );
   }
