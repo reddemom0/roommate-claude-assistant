@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useRef, useEffect } from 'react';
-import { Send, MessageCircle, MoreHorizontal, RefreshCw } from 'lucide-react';
+import { Send, MoreHorizontal, Sparkles } from 'lucide-react';
 
 interface Message {
   id: number;
@@ -26,13 +26,9 @@ export default function RoommateClaudeAssistant() {
   const [userName, setUserName] = useState('');
   const [showNameInput, setShowNameInput] = useState(true);
   const [showMenu, setShowMenu] = useState(false);
-  const [isRefreshing, setIsRefreshing] = useState(false);
-  const [pullDistance, setPullDistance] = useState(0);
   
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
-  const messagesContainerRef = useRef<HTMLDivElement>(null);
-  const touchStartY = useRef<number>(0);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -42,62 +38,9 @@ export default function RoommateClaudeAssistant() {
     scrollToBottom();
   }, [messages]);
 
-  // iOS viewport height fix
-  useEffect(() => {
-    const setVH = () => {
-      const vh = window.innerHeight * 0.01;
-      document.documentElement.style.setProperty('--vh', `${vh}px`);
-    };
-    setVH();
-    window.addEventListener('resize', setVH);
-    window.addEventListener('orientationchange', setVH);
-    return () => {
-      window.removeEventListener('resize', setVH);
-      window.removeEventListener('orientationchange', setVH);
-    };
-  }, []);
-
-  // Pull to refresh
-  const handleTouchStart = (e: React.TouchEvent) => {
-    if (messagesContainerRef.current?.scrollTop === 0) {
-      touchStartY.current = e.touches[0].clientY;
-    }
-  };
-
-  const handleTouchMove = (e: React.TouchEvent) => {
-    if (messagesContainerRef.current?.scrollTop === 0 && !isRefreshing) {
-      const currentY = e.touches[0].clientY;
-      const distance = Math.max(0, Math.min(80, currentY - touchStartY.current));
-      setPullDistance(distance);
-      
-      if (distance > 0) {
-        e.preventDefault();
-        if (distance > 50 && 'vibrate' in navigator) {
-          navigator.vibrate(5);
-        }
-      }
-    }
-  };
-
-  const handleTouchEnd = () => {
-    if (pullDistance > 50 && !isRefreshing) {
-      handleRefresh();
-    }
-    setPullDistance(0);
-  };
-
-  const handleRefresh = async () => {
-    setIsRefreshing(true);
-    await new Promise(resolve => setTimeout(resolve, 800));
-    setIsRefreshing(false);
-  };
-
   const handleSetName = () => {
     if (userName.trim()) {
       setShowNameInput(false);
-      if ('vibrate' in navigator) {
-        navigator.vibrate(10);
-      }
     }
   };
 
@@ -141,12 +84,8 @@ export default function RoommateClaudeAssistant() {
     setInputMessage('');
     setIsLoading(true);
 
-    if ('vibrate' in navigator) {
-      navigator.vibrate(8);
-    }
-
     if (inputRef.current) {
-      inputRef.current.style.height = '44px';
+      inputRef.current.style.height = 'auto';
     }
 
     const conversationHistory = updatedMessages.map(msg => ({
@@ -205,17 +144,13 @@ export default function RoommateClaudeAssistant() {
     setShowMenu(false);
   };
 
-  const formatTime = (timestamp: Date) => {
-    return timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-  };
-
   const quickPrompts = [
-    "Groceries?",
-    "Split bill",
-    "Settle debate",
-    "Barcelona info",
-    "Weekend plans",
-    "Assign task"
+    "Who's turn for groceries?",
+    "Split this bill 3 ways", 
+    "Settle this debate",
+    "Find Barcelona info",
+    "Plan weekend activity",
+    "Assign this task"
   ];
 
   const handleQuickPrompt = (prompt: string) => {
@@ -225,33 +160,37 @@ export default function RoommateClaudeAssistant() {
 
   if (showNameInput) {
     return (
-      <div className="min-h-screen bg-black flex items-center justify-center p-6" 
-           style={{ height: 'calc(var(--vh, 1vh) * 100)' }}>
-        <div className="bg-gray-900/90 backdrop-blur-2xl rounded-3xl p-8 w-full max-w-sm border border-gray-800">
+      <div className="min-h-screen bg-white flex items-center justify-center p-6">
+        <div className="w-full max-w-md">
           <div className="text-center mb-8">
-            <div className="w-16 h-16 bg-blue-500 rounded-2xl flex items-center justify-center mx-auto mb-6">
-              <MessageCircle className="w-8 h-8 text-white" />
+            <div className="w-12 h-12 bg-orange-500 rounded-xl flex items-center justify-center mx-auto mb-4">
+              <Sparkles className="w-6 h-6 text-white" />
             </div>
-            <h1 className="text-2xl font-medium text-white mb-2">Assistant</h1>
-            <p className="text-gray-400 text-sm">Who's this?</p>
+            <h1 className="text-2xl font-medium text-gray-900 mb-2">Claude Assistant</h1>
+            <p className="text-gray-600">Barcelona household helper</p>
           </div>
           
           <div className="space-y-4">
-            <input
-              type="text"
-              value={userName}
-              onChange={(e) => setUserName(e.target.value)}
-              onKeyPress={handleKeyPress}
-              placeholder="Chris, Emily, or Levi"
-              className="w-full px-4 py-4 bg-gray-800 border border-gray-700 rounded-2xl focus:ring-1 focus:ring-blue-500 focus:border-blue-500 outline-none text-white placeholder-gray-500 text-base"
-              autoFocus
-            />
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Your name
+              </label>
+              <input
+                type="text"
+                value={userName}
+                onChange={(e) => setUserName(e.target.value)}
+                onKeyPress={handleKeyPress}
+                placeholder="Chris, Emily, or Levi"
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none text-gray-900"
+                autoFocus
+              />
+            </div>
             <button
               onClick={handleSetName}
               disabled={!userName.trim()}
-              className="w-full bg-blue-500 text-white py-4 rounded-2xl hover:bg-blue-600 disabled:bg-gray-800 disabled:text-gray-500 transition-colors font-medium text-base"
+              className="w-full bg-orange-500 text-white py-3 rounded-lg hover:bg-orange-600 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors font-medium"
             >
-              Continue
+              Start conversation
             </button>
           </div>
         </div>
@@ -260,23 +199,22 @@ export default function RoommateClaudeAssistant() {
   }
 
   return (
-    <div className="h-screen bg-black flex flex-col" 
-         style={{ height: 'calc(var(--vh, 1vh) * 100)' }}>
+    <div className="h-screen bg-white flex flex-col">
       
-      {/* Header */}
-      <div className="bg-gray-900/90 backdrop-blur-xl border-b border-gray-800 px-4 py-3 flex items-center justify-between">
+      {/* Header - Claude style */}
+      <div className="border-b border-gray-200 px-4 py-3 flex items-center justify-between bg-white">
         <div className="flex items-center space-x-3">
-          <div className="w-8 h-8 bg-blue-500 rounded-xl flex items-center justify-center">
-            <MessageCircle className="w-4 h-4 text-white" />
+          <div className="w-8 h-8 bg-orange-500 rounded-lg flex items-center justify-center">
+            <Sparkles className="w-4 h-4 text-white" />
           </div>
           <div>
-            <h1 className="text-white font-medium">Claude</h1>
-            <p className="text-gray-400 text-xs">{userName}</p>
+            <h1 className="text-lg font-medium text-gray-900">Claude</h1>
+            <p className="text-sm text-gray-500">{userName}</p>
           </div>
         </div>
         <button
           onClick={() => setShowMenu(!showMenu)}
-          className="p-2 text-gray-400 hover:text-white transition-colors"
+          className="p-2 text-gray-400 hover:text-gray-600 rounded-lg hover:bg-gray-100 transition-colors"
         >
           <MoreHorizontal className="w-5 h-5" />
         </button>
@@ -284,24 +222,24 @@ export default function RoommateClaudeAssistant() {
 
       {/* Menu */}
       {showMenu && (
-        <div className="bg-gray-900/95 backdrop-blur-xl border-b border-gray-800 px-4 py-3">
+        <div className="border-b border-gray-200 bg-gray-50 px-4 py-3">
           <button
             onClick={clearChat}
-            className="text-gray-400 hover:text-white transition-colors text-sm"
+            className="text-sm text-gray-600 hover:text-gray-900 transition-colors"
           >
             Clear conversation
           </button>
         </div>
       )}
 
-      {/* Quick Actions */}
-      <div className="bg-gray-900/80 backdrop-blur-xl border-b border-gray-800 px-4 py-3">
-        <div className="flex space-x-2 overflow-x-auto scrollbar-hide">
+      {/* Quick Actions - Claude style */}
+      <div className="border-b border-gray-200 bg-gray-50 px-4 py-3">
+        <div className="flex space-x-2 overflow-x-auto">
           {quickPrompts.map((prompt, index) => (
             <button
               key={index}
               onClick={() => handleQuickPrompt(prompt)}
-              className="flex-shrink-0 px-3 py-1.5 bg-gray-800 text-gray-300 rounded-full text-sm hover:bg-gray-700 transition-colors whitespace-nowrap"
+              className="flex-shrink-0 px-3 py-1.5 bg-white border border-gray-200 text-gray-700 rounded-full text-sm hover:bg-gray-100 transition-colors whitespace-nowrap"
             >
               {prompt}
             </button>
@@ -309,58 +247,52 @@ export default function RoommateClaudeAssistant() {
         </div>
       </div>
 
-      {/* Pull to refresh indicator */}
-      {(pullDistance > 0 || isRefreshing) && (
-        <div className="absolute top-20 left-1/2 transform -translate-x-1/2 z-10">
-          <div className={`w-6 h-6 rounded-full bg-gray-700 flex items-center justify-center ${
-            isRefreshing ? 'animate-spin' : ''
-          }`}>
-            <RefreshCw className="w-3 h-3 text-gray-400" />
-          </div>
-        </div>
-      )}
-
-      {/* Messages */}
-      <div className="flex-1 overflow-hidden">
-        <div 
-          ref={messagesContainerRef}
-          className="h-full overflow-y-auto px-4 py-6 space-y-4"
-          onTouchStart={handleTouchStart}
-          onTouchMove={handleTouchMove}
-          onTouchEnd={handleTouchEnd}
-          style={{ 
-            transform: `translateY(${pullDistance * 0.3}px)`,
-            transition: pullDistance === 0 ? 'transform 0.2s ease-out' : 'none'
-          }}
-        >
+      {/* Messages - Claude style */}
+      <div className="flex-1 overflow-y-auto">
+        <div className="max-w-3xl mx-auto px-4 py-6 space-y-6">
           {messages.map((message) => (
-            <div
-              key={message.id}
-              className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
-            >
-              <div className={`max-w-[80%] px-4 py-3 rounded-3xl ${
-                message.role === 'user'
-                  ? 'bg-blue-500 text-white ml-12'
-                  : 'bg-gray-800 text-gray-100 mr-12'
-              }`}>
-                <div className="flex items-center space-x-2 mb-1">
-                  <span className="text-xs font-medium opacity-70">{message.user}</span>
-                  <span className="text-xs opacity-50">
-                    {formatTime(message.timestamp)}
-                  </span>
+            <div key={message.id} className="space-y-2">
+              <div className="flex items-center space-x-2">
+                <div className={`w-6 h-6 rounded-full flex items-center justify-center ${
+                  message.role === 'user' 
+                    ? 'bg-blue-500' 
+                    : 'bg-orange-500'
+                }`}>
+                  {message.role === 'user' ? (
+                    <span className="text-white text-xs font-medium">
+                      {message.user.charAt(0).toUpperCase()}
+                    </span>
+                  ) : (
+                    <Sparkles className="w-3 h-3 text-white" />
+                  )}
                 </div>
-                <p className="text-sm leading-relaxed">{message.content}</p>
+                <span className="font-medium text-gray-900">
+                  {message.role === 'user' ? message.user : 'Claude'}
+                </span>
+              </div>
+              <div className="ml-8">
+                <div className="prose prose-gray max-w-none">
+                  <p className="text-gray-900 leading-relaxed whitespace-pre-wrap">
+                    {message.content}
+                  </p>
+                </div>
               </div>
             </div>
           ))}
           
           {isLoading && (
-            <div className="flex justify-start">
-              <div className="bg-gray-800 text-gray-100 max-w-[80%] px-4 py-3 rounded-3xl mr-12">
+            <div className="space-y-2">
+              <div className="flex items-center space-x-2">
+                <div className="w-6 h-6 rounded-full bg-orange-500 flex items-center justify-center">
+                  <Sparkles className="w-3 h-3 text-white" />
+                </div>
+                <span className="font-medium text-gray-900">Claude</span>
+              </div>
+              <div className="ml-8">
                 <div className="flex items-center space-x-1">
-                  <div className="w-2 h-2 bg-gray-500 rounded-full animate-bounce"></div>
-                  <div className="w-2 h-2 bg-gray-500 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
-                  <div className="w-2 h-2 bg-gray-500 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
+                  <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"></div>
+                  <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
+                  <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
                 </div>
               </div>
             </div>
@@ -369,20 +301,20 @@ export default function RoommateClaudeAssistant() {
         </div>
       </div>
 
-      {/* Input */}
-      <div className="bg-gray-900/90 backdrop-blur-xl border-t border-gray-800 p-4">
-        <div className="flex items-end space-x-3">
-          <div className="flex-1">
+      {/* Input - Claude style */}
+      <div className="border-t border-gray-200 bg-white p-4">
+        <div className="max-w-3xl mx-auto">
+          <div className="relative">
             <textarea
               ref={inputRef}
               value={inputMessage}
               onChange={(e) => setInputMessage(e.target.value)}
               onKeyPress={handleKeyPress}
-              placeholder="Message"
-              className="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-3xl focus:ring-1 focus:ring-blue-500 focus:border-blue-500 outline-none resize-none text-white placeholder-gray-500 text-base"
+              placeholder="Message Claude..."
+              className="w-full px-4 py-3 pr-12 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none resize-none text-gray-900 placeholder-gray-500"
               rows={1}
               style={{
-                minHeight: '44px',
+                minHeight: '48px',
                 maxHeight: '120px',
                 height: 'auto'
               }}
@@ -393,14 +325,14 @@ export default function RoommateClaudeAssistant() {
                 target.style.height = Math.min(target.scrollHeight, 120) + 'px';
               }}
             />
+            <button
+              onClick={handleSendMessage}
+              disabled={!inputMessage.trim() || isLoading}
+              className="absolute right-2 bottom-2 w-8 h-8 bg-orange-500 text-white rounded-lg hover:bg-orange-600 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors flex items-center justify-center"
+            >
+              <Send className="w-4 h-4" />
+            </button>
           </div>
-          <button
-            onClick={handleSendMessage}
-            disabled={!inputMessage.trim() || isLoading}
-            className="w-11 h-11 bg-blue-500 text-white rounded-full hover:bg-blue-600 disabled:bg-gray-700 disabled:text-gray-500 transition-colors flex items-center justify-center flex-shrink-0"
-          >
-            <Send className="w-4 h-4" />
-          </button>
         </div>
       </div>
     </div>
